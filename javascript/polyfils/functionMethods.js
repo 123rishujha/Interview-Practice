@@ -33,7 +33,7 @@ let tempObj = {
 }
 
 
-// myfunc.myCall(tempObj, "Hello", ".");
-// myfunc.myApply(tempObj, ["hi", "!"]);
+myfunc.myCall(tempObj, "Hello", ".");
+myfunc.myApply(tempObj, ["hi", "!"]);
 let temp = myfunc.myBind(tempObj, "hi");
 temp("!");
