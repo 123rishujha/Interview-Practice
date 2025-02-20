@@ -47,6 +47,20 @@ function myPromise(executor){
     executor(resolveFunc, rejectFunc);
 }
 
+
+//-------------------------- promise.resolve and promise.resolve methods --------------
+myPromise.resolve = function(val){
+   return new myPromise((resolve)=>{
+    resolve(val);
+   }) 
+}
+myPromise.reject = function(val){
+   return new myPromise((res,reject)=>{
+    reject(val);
+   }) 
+ }
+//-------------------------- promise.resolve and promise.resolve methods --------------
+
 let temp = new myPromise((res,rej)=>{
     let x = false;
     if(x){
@@ -62,3 +76,4 @@ let temp = new myPromise((res,rej)=>{
 
 temp.then((res)=>console.log("res: ", res))
 .catch((err)=>console.log("err: ",err));
+
