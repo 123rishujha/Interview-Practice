@@ -1,79 +1,226 @@
-function myPromise(executor){
+function myPromise(executor) {
     let onResolve;
     let onReject;
-    let fullfield = false;
-    let rejected = false;
-    let result;
-    let called = false;
-
-    function resolveFunc(val){
-        fullfield = true;
-        result = val;
-        if(typeof onResolve === "function"){
-            onResolve(val);
-            console.log("inside resolve");
-            called = true;
-        }
+    let fullfiled = false,
+      rejected = false,
+      result = "",
+      called = false; // .then prop callback called
+  
+    function resolve(val) {
+      // if executor code is synchronus resolve func inside executor will be called before .then
+      fullfiled = true;
+      result = val;
+      if (typeof onResolve === "function") {
+        onResolve(val);
+        called = true;
+      }
     }
-
-    function rejectFunc(val){
-        rejected = true;
-        result = val;
-        if(typeof onReject === "function"){
-            onReject(val);
-            called = true;
-        }
+  
+    function reject(reason) {
+      rejected = true;
+      result = reason;
+      if (typeof onReject === "function") {
+        onReject(result);
+        called = true;
+      }
     }
-
-    this.then = function(cb){
-        onResolve = cb;
-        if(fullfield && !called){
-            cb(result);
-            console.log("inside then");
-            called = true;
-        }
-        return this;
+  
+    this.then = function (callback) {
+      onResolve = callback;
+      // if executor code is synchronus resolve func inside executor will be called before .then
+      if (fullfiled && !called) {
+        callback(result);
+      }
+      return this;
+    };
+  
+    this.catch = function (callback) {
+      onReject = callback;
+      if (rejected && !called) {
+        callback(result);
+      }
+      return this;
+    };
+  
+    try {
+      executor(resolve, reject);
+    } catch (err) {
+      reject(err);
     }
-
-    this.catch = function(cb){
-        onReject = cb;
-        if(rejected && !called){
-            cb(result);
-            called = true;
-        }
-        return this;
+  }
+  // ----------------- resolve, reject methods --------------
+  myPromise.resolve = function (val) {
+    return new myPromise((res) => {
+      setTimeout(() => res(val), 0);
+    });
+  };
+  
+  myPromise.reject = function (val) {
+    return new myPromise((res) => {
+      setTimeout(() => res(val), 0);
+    });
+  };
+  
+  // ----------------- promise all methods --------------
+  myPromise.all = function (promiseArr) {
+    let result = [];
+    function func(resolve, reject) {
+      promiseArr.forEach((promObj, index) => {
+        promObj
+          .then((res) => {
+            result.push(res);
+            if (index === promiseArr.length - 1) {
+              resolve(result);
+            }
+          })
+          .catch((err) => {
+            reject(err);
+          });
+      });
     }
-
-    executor(resolveFunc, rejectFunc);
-}
-
-
-//-------------------------- promise.resolve and promise.resolve methods --------------
-myPromise.resolve = function(val){
-   return new myPromise((resolve)=>{
-    resolve(val);
-   }) 
-}
-myPromise.reject = function(val){
-   return new myPromise((res,reject)=>{
-    reject(val);
-   }) 
- }
-//-------------------------- promise.resolve and promise.resolve methods --------------
-
-let temp = new myPromise((res,rej)=>{
+    return new myPromise(func);
+  };
+  
+  // ----------------- promise allSettled methods --------------
+  
+  myPromise.allSettled = function (promiseArr) {
+    let result = [];
+    function func(resolve, reject) {
+      promiseArr.forEach((promObj, index) => {
+        promObj
+          .then((res) => {
+            result.push({ status: "fullfield", value: res });
+            if (index === promiseArr.length - 1) {
+              return resolve(result);
+            }
+          })
+          .catch((err) => {
+            result.push({ status: "rejected", reason: err });
+            if (index === promiseArr.length - 1) {
+              return resolve(result);
+            }
+          });
+      });
+    }
+    return new myPromise(func);
+  };
+  
+  // ----------------- promise race methods --------------
+  myPromise.race = function (promiseArr) {
+    return new myPromise((resolve, reject) => {
+      let settled = false;
+      for (let obj of promiseArr) {
+        obj
+          .then((res) => {
+            if (!settled) {
+              settled = true;
+              resolve(res);
+            }
+          })
+          .catch((err) => {
+            if (!settled) {
+              settled = true;
+              reject(err);
+            }
+          });
+      }
+    });
+  };
+  
+  // ----------------- promise any methods --------------
+  myPromise.any = function (promiseArr) {
+    return new myPromise((resolve, reject) => {
+      let settled = false;
+      for (let obj of promiseArr) {
+        obj.then((res) => {
+          if (!settled) {
+            settled = true;
+            resolve(res);
+          }
+        });
+      }
+    });
+  };
+  
+  // ------------------------------- my custom promise function -----------------------------------
+  
+  let temp1 = new myPromise((resolve, rejected) => {
+    let x = true;
+    if (x) {
+      setTimeout(() => {
+        resolve("promise is successfully resolved");
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        rejected("promise is rejected");
+      }, 1000);
+    }
+  });
+  let temp2 = new myPromise((resolve, rejected) => {
+    let x = true;
+    if (x) {
+      setTimeout(() => {
+        resolve("promise is successfully resolved");
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        rejected("promise is rejected");
+      }, 1000);
+    }
+  });
+  let temp3 = new myPromise((resolve, rejected) => {
     let x = false;
-    if(x){
-        setTimeout(()=>{
-            res("Promise resolved successfully");
-        },1000);
-    }else{
-        // setTimeout(()=>{
-            rej("Promise rejected");
-        // },1000);
+    if (x) {
+      setTimeout(() => {
+        resolve("promise is successfully resolved");
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        rejected("promise is rejected");
+      }, 1000);
     }
-})
-
-temp.then((res)=>console.log("res: ", res))
-.catch((err)=>console.log("err: ",err));
-
+  });
+  
+  // temp
+  //   .then((res) => {
+  //     console.log("fullfiled response:", res);
+  //   })
+  //   .catch((error) => {
+  //     console.log("rejected response:", error);
+  //   });
+  
+  // ---- testing resolve reject methods
+  // myPromise.resolve(42).then((res) => console.log("resolve response:", res));
+  
+  
+  //---------- testing all method ----------
+  myPromise
+    .all([temp1, temp2, temp3])
+    .then((res) => {
+      console.log("all res :", res);
+    })
+    .catch((err) => console.log("all err: ", err));
+  
+  //---------- testing all method ----------
+  // myPromise
+  //   .allSettled([temp1, temp2, temp3])
+  //   .then((res) => {
+  //     console.log("all res :", res);
+  //   })
+  //   .catch((err) => console.log("all rej", err));
+  
+  //---------- testing all method ----------
+  // myPromise
+  //   .race([temp1, temp2, temp3])
+  //   .then((res) => {
+  //     console.log("first res:", res);
+  //   })
+  //   .catch((err) => console.log("first error:", err));
+  
+  //---------- testing all method ----------
+  // myPromise
+  //   .any([temp1, temp2, temp3])
+  //   .then((res) => {
+  //     console.log("first res:", res);
+  //   })
+  //   .catch((err) => console.log("first error:", err));
